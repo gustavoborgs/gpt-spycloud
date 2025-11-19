@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("PRISMA_MIGRATE_SHADOW_DATABASE_URL")
 }
 
 // ============================================
