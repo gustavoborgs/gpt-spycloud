@@ -130,6 +130,46 @@ model IngressMessageRaw {
 }
 
 // ============================================
+// Audit Log - Independent entity for backup/audit
+// ============================================
+
+model IngressAuditLog {
+  id                String    @id @default(uuid())
+  rawPayload        String    @db.Text
+  sourceType        String    // GSM_APN, LORAWAN_EVERYNET, HTTP_WEBHOOK, etc.
+  sourceIdentifier  String?   // IP:Port, Gateway ID, etc.
+  deviceSerialNumber String?
+  
+  // Connection/Request metadata
+  remoteAddress     String?   // IP address
+  remotePort        Int?
+  userAgent         String?
+  httpMethod        String?   // GET, POST, etc.
+  httpPath          String?   // /webhook/everynet, etc.
+  httpHeaders       Json?     // All HTTP headers
+  
+  // Processing status
+  processingStatus String    @default("RECEIVED") // RECEIVED, PROCESSING, SUCCESS, FAILED
+  errorMessage      String?   @db.Text
+  errorStack        String?   @db.Text
+  
+  // Additional metadata (capture everything possible)
+  metadata          Json?     // Any additional context
+  
+  // Timestamps
+  receivedAt        DateTime  @default(now())
+  processedAt       DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([sourceType])
+  @@index([deviceSerialNumber])
+  @@index([processingStatus])
+  @@index([receivedAt])
+  @@index([remoteAddress])
+  @@map("ingress_audit_logs")
+}
+
+// ============================================
 // Telemetry Module
 // ============================================
 
