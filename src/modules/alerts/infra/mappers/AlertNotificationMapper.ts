@@ -1,4 +1,4 @@
-import { AlertNotification as PrismaAlertNotification } from '@prisma/client';
+import { AlertNotification as PrismaAlertNotification, Prisma } from '@prisma/client';
 import { AlertNotification, AlertNotificationProps, NotificationStatus } from '../../domain/AlertNotification';
 
 export class AlertNotificationMapper {
@@ -21,13 +21,15 @@ export class AlertNotificationMapper {
 
   static toPersistence(
     notification: AlertNotification
-  ): Omit<PrismaAlertNotification, 'id' | 'createdAt' | 'updatedAt'> {
+  ): Omit<PrismaAlertNotification, 'id' | 'createdAt' | 'updatedAt' | 'metadata'> & {
+    metadata: Prisma.InputJsonValue | null;
+  } {
     return {
       alertRuleId: notification.alertRuleId,
       deviceSerialNumber: notification.deviceSerialNumber,
       eventId: notification.eventId,
       status: notification.status,
-      metadata: notification.metadata || null,
+      metadata: notification.metadata ? (notification.metadata as Prisma.InputJsonValue) : null,
     };
   }
 }

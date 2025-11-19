@@ -1,5 +1,3 @@
-import { env } from './env';
-
 export const queueConfig = {
   connection: {
     host: process.env.REDIS_HOST || 'localhost',

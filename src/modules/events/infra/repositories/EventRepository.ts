@@ -3,7 +3,7 @@ import { Event } from '../../domain/Event';
 import { BaseRepository } from '../../../../infra/db/repositories/base/BaseRepository';
 import { EventMapper } from '../mappers/EventMapper';
 
-export class EventRepository extends BaseRepository<Event> {
+export class EventRepository extends BaseRepository {
   constructor(prisma: PrismaClient) {
     super(prisma);
   }
@@ -22,12 +22,12 @@ export class EventRepository extends BaseRepository<Event> {
     prismaData.deviceId = device.id;
 
     const prismaEvent = await this.prisma.event.create({
-      data: prismaData,
+      data: prismaData as any,
     });
     return EventMapper.toDomain(prismaEvent);
   }
 
-  async getLastTelemetryState(deviceSerialNumber: string): Promise<{ ignition?: boolean } | null> {
+  async getLastTelemetryState(_deviceSerialNumber: string): Promise<{ ignition?: boolean } | null> {
     // This would typically query the last telemetry point
     // For now, return null - implement based on your needs
     return null;

@@ -1,6 +1,6 @@
-import { AlertRule as PrismaAlertRule } from '@prisma/client';
+import { AlertRule as PrismaAlertRule, Prisma } from '@prisma/client';
 import { AlertRule, AlertRuleProps } from '../../domain/AlertRule';
-import { EventType } from '../../events/domain/EventType';
+import { EventType } from '../../../events/domain/EventType';
 
 export class AlertRuleMapper {
   static toDomain(prismaRule: PrismaAlertRule): AlertRule {
@@ -17,10 +17,12 @@ export class AlertRuleMapper {
     return AlertRule.create(props, prismaRule.id, prismaRule.createdAt, prismaRule.updatedAt);
   }
 
-  static toPersistence(rule: AlertRule): Omit<PrismaAlertRule, 'id' | 'createdAt' | 'updatedAt'> & {
+  static toPersistence(rule: AlertRule): Omit<PrismaAlertRule, 'id' | 'createdAt' | 'updatedAt' | 'metadata' | 'conditions'> & {
     id: string;
     createdAt: Date;
     updatedAt: Date;
+    metadata: Prisma.InputJsonValue | null;
+    conditions: Prisma.InputJsonValue | null;
   } {
     return {
       id: rule.id,
@@ -28,9 +30,9 @@ export class AlertRuleMapper {
       name: rule.name,
       eventType: rule.eventType,
       enabled: rule.enabled,
-      conditions: rule.conditions || null,
+      conditions: rule.conditions ? (rule.conditions as Prisma.InputJsonValue) : null,
       notificationChannels: rule.notificationChannels,
-      metadata: rule.metadata || null,
+      metadata: rule.metadata ? (rule.metadata as Prisma.InputJsonValue) : null,
       createdAt: rule.createdAt,
       updatedAt: rule.updatedAt,
     };

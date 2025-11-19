@@ -1,4 +1,4 @@
-import { DecodedTelemetry } from '../../../telemetry/domain/DecodedTelemetry';
+import { DecodedTelemetry } from '../../../../telemetry/domain/DecodedTelemetry';
 
 /**
  * Decoder for GSM Model A devices

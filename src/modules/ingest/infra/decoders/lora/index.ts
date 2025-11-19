@@ -1,5 +1,5 @@
 import { EverynetPayloadParser } from './EverynetPayloadParser';
-import { DecodedTelemetry } from '../../../telemetry/domain/DecodedTelemetry';
+import { DecodedTelemetry } from '../../../../telemetry/domain/DecodedTelemetry';
 
 export function decodeLoraMessage(
   payload: any,

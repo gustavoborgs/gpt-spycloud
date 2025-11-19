@@ -1,10 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { AlertRule } from '../../domain/AlertRule';
 import { BaseRepository } from '../../../../infra/db/repositories/base/BaseRepository';
-import { EventType } from '../../events/domain/EventType';
+import { EventType } from '../../../events/domain/EventType';
 import { AlertRuleMapper } from '../mappers/AlertRuleMapper';
 
-export class AlertRuleRepository extends BaseRepository<AlertRule> {
+export class AlertRuleRepository extends BaseRepository {
   constructor(prisma: PrismaClient) {
     super(prisma);
   }
@@ -24,8 +24,8 @@ export class AlertRuleRepository extends BaseRepository<AlertRule> {
     const prismaData = AlertRuleMapper.toPersistence(rule);
     const prismaRule = await this.prisma.alertRule.upsert({
       where: { id: rule.id },
-      create: prismaData,
-      update: prismaData,
+      create: prismaData as any,
+      update: prismaData as any,
     });
     return AlertRuleMapper.toDomain(prismaRule);
   }

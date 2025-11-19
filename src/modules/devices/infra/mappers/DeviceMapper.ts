@@ -1,4 +1,4 @@
-import { Device as PrismaDevice } from '@prisma/client';
+import { Device as PrismaDevice, Prisma } from '@prisma/client';
 import { Device, DeviceProps } from '../../domain/Device';
 import { DeviceStatus, DeviceType } from '../../domain/enums';
 
@@ -17,10 +17,11 @@ export class DeviceMapper {
     return Device.create(props, prismaDevice.id, prismaDevice.createdAt, prismaDevice.updatedAt);
   }
 
-  static toPersistence(device: Device): Omit<PrismaDevice, 'id' | 'createdAt' | 'updatedAt'> & {
+  static toPersistence(device: Device): Omit<PrismaDevice, 'id' | 'createdAt' | 'updatedAt' | 'metadata'> & {
     id: string;
     createdAt: Date;
     updatedAt: Date;
+    metadata: Prisma.InputJsonValue | null;
   } {
     return {
       id: device.id,
@@ -30,7 +31,7 @@ export class DeviceMapper {
       assetId: device.assetId || null,
       status: device.status,
       type: device.type,
-      metadata: device.metadata || null,
+      metadata: device.metadata ? (device.metadata as Prisma.InputJsonValue) : null,
       createdAt: device.createdAt,
       updatedAt: device.updatedAt,
     };

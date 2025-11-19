@@ -3,7 +3,7 @@ import { IngressMessageRaw } from '../../domain/IngressMessageRaw';
 import { BaseRepository } from '../../../../infra/db/repositories/base/BaseRepository';
 import { IngressMessageRawMapper } from '../mappers/IngressMessageRawMapper';
 
-export class IngressMessageRawRepository extends BaseRepository<IngressMessageRaw> {
+export class IngressMessageRawRepository extends BaseRepository {
   constructor(prisma: PrismaClient) {
     super(prisma);
   }
@@ -20,7 +20,7 @@ export class IngressMessageRawRepository extends BaseRepository<IngressMessageRa
     const prismaData = IngressMessageRawMapper.toPersistence(message);
 
     const prismaMessage = await this.prisma.ingressMessageRaw.create({
-      data: prismaData,
+      data: prismaData as any,
     });
 
     return IngressMessageRawMapper.toDomain(prismaMessage);

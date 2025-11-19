@@ -1,4 +1,4 @@
-import { DecodedTelemetry } from '../../../telemetry/domain/DecodedTelemetry';
+import { DecodedTelemetry } from '../../../../telemetry/domain/DecodedTelemetry';
 
 /**
  * Parser for Everynet LoRaWAN payloads

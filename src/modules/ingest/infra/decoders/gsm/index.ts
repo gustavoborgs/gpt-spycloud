@@ -1,7 +1,7 @@
 import { ModelADecoder } from './ModelA.decoder';
 import { ModelBDecoder } from './ModelB.decoder';
-import { DecodedTelemetry } from '../../../telemetry/domain/DecodedTelemetry';
-import { DEVICE_MODEL_CAPABILITIES } from '../../../../shared/mapping/deviceModelCapabilities';
+import { DecodedTelemetry } from '../../../../telemetry/domain/DecodedTelemetry';
+import { DEVICE_MODEL_CAPABILITIES } from '../../../../../shared/mapping/deviceModelCapabilities';
 
 export function decodeGsmMessage(
   rawPayload: string,

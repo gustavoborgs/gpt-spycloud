@@ -1,9 +1,9 @@
 import { UseCase } from '../../../../core/application/UseCase';
 import { Result, ok, fail } from '../../../../core/utils/Result';
-import { Event } from '../../events/domain/Event';
+import { Event } from '../../../events/domain/Event';
 import { AlertRuleRepository } from '../../infra/repositories/AlertRuleRepository';
 import { AlertNotificationRepository } from '../../infra/repositories/AlertNotificationRepository';
-import { AlertNotification } from '../../domain/AlertNotification';
+import { AlertNotification, NotificationStatus } from '../../domain/AlertNotification';
 import { logger } from '../../../../config/logger';
 
 export class EvaluateAlertRulesUseCase implements UseCase<Event, void> {
@@ -26,7 +26,7 @@ export class EvaluateAlertRulesUseCase implements UseCase<Event, void> {
           alertRuleId: rule.id,
           deviceSerialNumber: event.deviceSerialNumber,
           eventId: event.id,
-          status: 'PENDING',
+          status: NotificationStatus.PENDING,
           metadata: {
             eventType: event.eventType,
             timestamp: event.timestamp,

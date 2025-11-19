@@ -1,4 +1,4 @@
-import { PrismaClient, Device as PrismaDevice } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { Device } from '../../domain/Device';
 import { DeviceStatus } from '../../domain/enums';
 import { BaseRepository } from '../../../../infra/db/repositories/base/BaseRepository';
@@ -12,7 +12,7 @@ export interface DeviceFilters {
   status?: DeviceStatus;
 }
 
-export class DeviceRepository extends BaseRepository<Device> {
+export class DeviceRepository extends BaseRepository {
   constructor(prisma: PrismaClient) {
     super(prisma);
   }
@@ -34,7 +34,7 @@ export class DeviceRepository extends BaseRepository<Device> {
   }
 
   async findMany(filters: DeviceFilters & PaginationDTO): Promise<{ data: Device[]; total: number }> {
-    const { page, limit, skip } = normalizePagination(filters);
+    const { limit, skip } = normalizePagination(filters);
 
     const where: any = {};
     if (filters.tenantId) where.tenantId = filters.tenantId;
@@ -62,8 +62,8 @@ export class DeviceRepository extends BaseRepository<Device> {
 
     const prismaDevice = await this.prisma.device.upsert({
       where: { id: device.id },
-      create: prismaData,
-      update: prismaData,
+      create: prismaData as any,
+      update: prismaData as any,
     });
 
     return DeviceMapper.toDomain(prismaDevice);

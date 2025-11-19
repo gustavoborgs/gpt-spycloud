@@ -8,8 +8,8 @@ export interface JwtPayload {
 }
 
 export class JWT {
-  static sign(payload: JwtPayload, expiresIn: string = '7d'): string {
-    return jwt.sign(payload, env.JWT_SECRET, { expiresIn });
+  static sign(payload: JwtPayload, expiresIn: string | number = '7d'): string {
+    return jwt.sign(payload, env.JWT_SECRET, { expiresIn } as jwt.SignOptions);
   }
 
   static verify(token: string): JwtPayload {

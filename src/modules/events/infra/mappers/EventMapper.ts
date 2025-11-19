@@ -1,4 +1,4 @@
-import { Event as PrismaEvent } from '@prisma/client';
+import { Event as PrismaEvent, Prisma } from '@prisma/client';
 import { Event, EventProps } from '../../domain/Event';
 import { EventType } from '../../domain/EventType';
 
@@ -16,8 +16,9 @@ export class EventMapper {
     return Event.create(props, prismaEvent.id, prismaEvent.createdAt, prismaEvent.updatedAt);
   }
 
-  static toPersistence(event: Event): Omit<PrismaEvent, 'id' | 'createdAt' | 'updatedAt'> & {
+  static toPersistence(event: Event): Omit<PrismaEvent, 'id' | 'createdAt' | 'updatedAt' | 'metadata'> & {
     deviceId: string;
+    metadata: Prisma.InputJsonValue | null;
   } {
     // Note: deviceId needs to be resolved from deviceSerialNumber before calling this
     // This is a simplified version - in practice, you'd pass deviceId separately
@@ -28,7 +29,7 @@ export class EventMapper {
       timestamp: event.timestamp,
       latitude: event.latitude || null,
       longitude: event.longitude || null,
-      metadata: event.metadata || null,
+      metadata: event.metadata ? (event.metadata as Prisma.InputJsonValue) : null,
     };
   }
 }

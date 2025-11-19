@@ -9,7 +9,7 @@ export interface TelemetryFilters {
   endDate?: Date;
 }
 
-export class TelemetryRepository extends BaseRepository<any> {
+export class TelemetryRepository extends BaseRepository {
   constructor(prisma: PrismaClient) {
     super(prisma);
   }
@@ -67,7 +67,7 @@ export class TelemetryRepository extends BaseRepository<any> {
     data: DecodedTelemetry[];
     total: number;
   }> {
-    const { page, limit, skip } = normalizePagination(filters);
+    const { limit, skip } = normalizePagination(filters);
 
     const where: any = {};
     if (filters.deviceSerialNumber) where.deviceSerialNumber = filters.deviceSerialNumber;

@@ -1,6 +1,6 @@
 import { UseCase } from '../../../../core/application/UseCase';
 import { Result, ok, fail } from '../../../../core/utils/Result';
-import { DecodedTelemetry } from '../../telemetry/domain/DecodedTelemetry';
+import { DecodedTelemetry } from '../../../telemetry/domain/DecodedTelemetry';
 import { EventRepository } from '../../infra/repositories/EventRepository';
 import { Event } from '../../domain/Event';
 import { EventType } from '../../domain/EventType';

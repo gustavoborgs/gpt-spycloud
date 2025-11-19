@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PaginationDTO, PaginatedResponseDTO } from '../../../../core/application/dto';
 
-export abstract class BaseRepository<T> {
+export abstract class BaseRepository {
   protected prisma: PrismaClient;
 
   constructor(prisma: PrismaClient) {

@@ -1,4 +1,4 @@
-import { IngressMessageRaw as PrismaIngressMessageRaw } from '@prisma/client';
+import { IngressMessageRaw as PrismaIngressMessageRaw, Prisma } from '@prisma/client';
 import { IngressMessageRaw, IngressMessageRawProps } from '../../domain/IngressMessageRaw';
 import { SourceType } from '../../domain/SourceType';
 
@@ -20,13 +20,15 @@ export class IngressMessageRawMapper {
     );
   }
 
-  static toPersistence(message: IngressMessageRaw): Omit<PrismaIngressMessageRaw, 'id' | 'createdAt' | 'updatedAt'> {
+  static toPersistence(message: IngressMessageRaw): Omit<PrismaIngressMessageRaw, 'id' | 'createdAt' | 'updatedAt' | 'metadata'> & {
+    metadata: Prisma.InputJsonValue | null;
+  } {
     return {
       rawPayload: message.rawPayload,
       sourceType: message.sourceType,
       sourceIdentifier: message.sourceIdentifier || null,
       deviceSerialNumber: message.deviceSerialNumber || null,
-      metadata: message.metadata || null,
+      metadata: message.metadata ? (message.metadata as Prisma.InputJsonValue) : null,
       processedAt: null,
     };
   }
