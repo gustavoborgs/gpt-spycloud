@@ -50,5 +50,12 @@ export const DEVICE_MODEL_CAPABILITIES: Record<string, DeviceModelCapabilities> 
     sensors: [SensorType.GPS, SensorType.TEMPERATURE],
     decoder: 'IscaFK',
   },
+  'ISCAFK_GSM': {
+    modelId: 'ISCAFK_GSM',
+    name: 'IscaFK GSM',
+    connectivity: ConnectivityType.GSM,
+    sensors: [SensorType.GPS, SensorType.TEMPERATURE],
+    decoder: 'IscaFK',
+  },
 };
 

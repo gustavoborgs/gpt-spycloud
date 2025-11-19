@@ -17,8 +17,10 @@ export class GsmSocketHandler {
 
   async handleMessage(message: GsmMessage): Promise<void> {
     try {
+      // The raw payload can be hex or base64
+      // The decoder will detect the format automatically
       const result = await this.getHandleGsmMessageUseCase().execute({
-        rawPayload: message.raw,
+        rawPayload: message.raw, // hex string or base64
         sourceIdentifier: message.source,
       });
 
