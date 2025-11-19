@@ -60,10 +60,22 @@ export class EverynetWebhookController {
       },
     });
 
-    // Save audit log immediately (fire-and-forget, should not block)
-    this.getAuditLogRepository().saveUnsafe(auditLog);
+    // Save audit log immediately - CRITICAL: must save before processing
+    const auditRepo = this.getAuditLogRepository();
+    const savedLog = await auditRepo.save(auditLog);
+    if (!savedLog) {
+      logger.error({ logId: auditLog.id }, 'CRITICAL: Failed to save initial audit log - data may be lost');
+    } else {
+      logger.debug({ logId: auditLog.id }, 'Initial audit log saved successfully');
+    }
 
     try {
+      // Mark as processing
+      auditLog.markProcessing();
+      auditRepo.saveOrUpdate(auditLog).catch((err) => {
+        logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to PROCESSING');
+      });
+
       // Now process the message
       const result = await this.getHandleLoraMessageUseCase().execute({
         payload: req.body,
@@ -72,7 +84,9 @@ export class EverynetWebhookController {
 
       // Update audit log with success
       auditLog.markSuccess();
-      this.getAuditLogRepository().saveUnsafe(auditLog);
+      await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+        logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to SUCCESS');
+      });
 
       if (result.isFailure()) {
         res.status(result.statusCode || 400).json({
@@ -87,11 +101,13 @@ export class EverynetWebhookController {
         messageId: result.value.id,
       });
     } catch (error: any) {
-      // Update audit log with error
+      // Update audit log with error - CRITICAL: must save this
       auditLog.markFailed(error);
-      this.getAuditLogRepository().saveUnsafe(auditLog);
+      await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+        logger.error({ error: err, logId: auditLog.id }, 'CRITICAL: Failed to save failed audit log');
+      });
 
-      logger.error({ error, request: req.body }, 'Unexpected error in Everynet webhook');
+      logger.error({ error, request: req.body, logId: auditLog.id }, 'Unexpected error in Everynet webhook');
 
       res.status(500).json({
         success: false,

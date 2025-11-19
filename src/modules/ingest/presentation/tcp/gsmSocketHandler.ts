@@ -45,10 +45,22 @@ export class GsmSocketHandler {
       },
     });
 
-    // Save audit log immediately (fire-and-forget, should not block)
-    this.getAuditLogRepository().saveUnsafe(auditLog);
+    // Save audit log immediately - CRITICAL: must save before processing
+    const auditRepo = this.getAuditLogRepository();
+    const savedLog = await auditRepo.save(auditLog);
+    if (!savedLog) {
+      logger.error({ logId: auditLog.id }, 'CRITICAL: Failed to save initial audit log - data may be lost');
+    } else {
+      logger.debug({ logId: auditLog.id }, 'Initial audit log saved successfully');
+    }
 
     try {
+      // Mark as processing
+      auditLog.markProcessing();
+      auditRepo.saveOrUpdate(auditLog).catch((err) => {
+        logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to PROCESSING');
+      });
+
       // The raw payload can be hex or base64
       // The decoder will detect the format automatically
       const result = await this.getHandleGsmMessageUseCase().execute({
@@ -56,23 +68,28 @@ export class GsmSocketHandler {
         sourceIdentifier: message.source,
       });
 
-      // Update audit log with success
-      auditLog.markSuccess();
-      this.getAuditLogRepository().saveUnsafe(auditLog);
-
       if (result.isFailure()) {
         logger.error({ error: result.error, message: message.raw }, 'Failed to process GSM message');
         auditLog.markFailed(result.error || 'Unknown error');
-        this.getAuditLogRepository().saveUnsafe(auditLog);
+        await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+          logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to FAILED');
+        });
       } else {
+        // Update audit log with success
+        auditLog.markSuccess();
+        await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+          logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to SUCCESS');
+        });
         logger.debug({ messageId: result.value.id }, 'GSM message processed successfully');
       }
     } catch (error: any) {
-      // Update audit log with error
+      // Update audit log with error - CRITICAL: must save this
       auditLog.markFailed(error);
-      this.getAuditLogRepository().saveUnsafe(auditLog);
+      await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+        logger.error({ error: err, logId: auditLog.id }, 'CRITICAL: Failed to save failed audit log');
+      });
 
-      logger.error({ error, message: message.raw }, 'Unexpected error processing GSM message');
+      logger.error({ error, message: message.raw, logId: auditLog.id }, 'Unexpected error processing GSM message');
     }
   }
 }
