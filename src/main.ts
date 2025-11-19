@@ -7,14 +7,14 @@ import { GsmSocketHandler } from './modules/ingest/presentation/tcp/gsmSocketHan
 
 async function bootstrap() {
   try {
-    // Initialize database
+    // Initialize database FIRST - before any routes or handlers are created
     await initDb();
     logger.info('✅ Database initialized');
 
-    // Create GSM socket handler
+    // Create GSM socket handler (after DB is initialized)
     const gsmHandler = new GsmSocketHandler();
 
-    // Create and start HTTP server
+    // Create and start HTTP server (after DB is initialized)
     const httpApp = await createHttpServer();
     const httpServer = httpApp.listen(env.HTTP_PORT, () => {
       logger.info(`🚀 HTTP server running on port ${env.HTTP_PORT}`);

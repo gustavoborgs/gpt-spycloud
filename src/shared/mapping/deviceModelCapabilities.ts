@@ -43,5 +43,12 @@ export const DEVICE_MODEL_CAPABILITIES: Record<string, DeviceModelCapabilities> 
     sensors: [SensorType.GPS, SensorType.TEMPERATURE],
     decoder: 'Everynet',
   },
+  'ISCAFK': {
+    modelId: 'ISCAFK',
+    name: 'IscaFK LoRaWAN',
+    connectivity: ConnectivityType.LORA,
+    sensors: [SensorType.GPS, SensorType.TEMPERATURE],
+    decoder: 'IscaFK',
+  },
 };
 

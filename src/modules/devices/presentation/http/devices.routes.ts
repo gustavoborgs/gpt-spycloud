@@ -3,7 +3,16 @@ import { DevicesController } from './devices.controller';
 import { CreateDeviceSchema } from '../../application/dtos/CreateDeviceDTO';
 
 const router = Router();
-const controller = new DevicesController();
+
+// Lazy initialization - controller is created when first route is accessed
+let controllerInstance: DevicesController | null = null;
+
+function getController(): DevicesController {
+  if (!controllerInstance) {
+    controllerInstance = new DevicesController();
+  }
+  return controllerInstance;
+}
 
 // Validation middleware
 function validate(schema: any) {
@@ -22,15 +31,15 @@ function validate(schema: any) {
 }
 
 router.post('/', validate(CreateDeviceSchema), (req, res, next) => {
-  controller.create(req, res).catch(next);
+  getController().create(req, res).catch(next);
 });
 
 router.get('/', (req, res, next) => {
-  controller.list(req, res).catch(next);
+  getController().list(req, res).catch(next);
 });
 
 router.post('/:id/bind', (req, res, next) => {
-  controller.bindToAsset(req, res).catch(next);
+  getController().bindToAsset(req, res).catch(next);
 });
 
 export { router as devicesRoutes };

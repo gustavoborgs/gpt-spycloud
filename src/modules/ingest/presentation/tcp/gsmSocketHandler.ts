@@ -5,16 +5,19 @@ import { getDb } from '../../../../config/db';
 import { logger } from '../../../../config/logger';
 
 export class GsmSocketHandler {
-  private handleGsmMessageUseCase: HandleGsmRawMessageUseCase;
+  private handleGsmMessageUseCase: HandleGsmRawMessageUseCase | null = null;
 
-  constructor() {
-    const repository = new IngressMessageRawRepository(getDb());
-    this.handleGsmMessageUseCase = new HandleGsmRawMessageUseCase(repository);
+  private getHandleGsmMessageUseCase(): HandleGsmRawMessageUseCase {
+    if (!this.handleGsmMessageUseCase) {
+      const repository = new IngressMessageRawRepository(getDb());
+      this.handleGsmMessageUseCase = new HandleGsmRawMessageUseCase(repository);
+    }
+    return this.handleGsmMessageUseCase;
   }
 
   async handleMessage(message: GsmMessage): Promise<void> {
     try {
-      const result = await this.handleGsmMessageUseCase.execute({
+      const result = await this.getHandleGsmMessageUseCase().execute({
         rawPayload: message.raw,
         sourceIdentifier: message.source,
       });

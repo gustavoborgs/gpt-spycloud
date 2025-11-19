@@ -5,15 +5,18 @@ import { getDb } from '../../../../config/db';
 import { SourceType } from '../../domain/SourceType';
 
 export class EverynetWebhookController {
-  private handleLoraMessageUseCase: HandleLoraRawMessageUseCase;
+  private handleLoraMessageUseCase: HandleLoraRawMessageUseCase | null = null;
 
-  constructor() {
-    const repository = new IngressMessageRawRepository(getDb());
-    this.handleLoraMessageUseCase = new HandleLoraRawMessageUseCase(repository);
+  private getHandleLoraMessageUseCase(): HandleLoraRawMessageUseCase {
+    if (!this.handleLoraMessageUseCase) {
+      const repository = new IngressMessageRawRepository(getDb());
+      this.handleLoraMessageUseCase = new HandleLoraRawMessageUseCase(repository);
+    }
+    return this.handleLoraMessageUseCase;
   }
 
   async handleWebhook(req: Request, res: Response): Promise<void> {
-    const result = await this.handleLoraMessageUseCase.execute({
+    const result = await this.getHandleLoraMessageUseCase().execute({
       payload: req.body,
       sourceType: SourceType.LORAWAN_EVERYNET,
     });
