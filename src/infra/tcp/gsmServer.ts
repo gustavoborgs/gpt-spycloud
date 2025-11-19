@@ -29,8 +29,14 @@ export function createGsmServer(
           // Pass the raw string (base64) and source identifier to the handler
           // It will be converted to buffer/hex in the decoder
           await onMessage(trimmedLine, clientAddress);
-        } catch (error) {
-          logger.error({ error, line: trimmedLine, lineLength: trimmedLine.length }, 'Error processing GSM message');
+        } catch (error: any) {
+          logger.error({ 
+            error: error?.message || error, 
+            stack: error?.stack,
+            line: trimmedLine, 
+            lineLength: trimmedLine.length,
+            source: clientAddress
+          }, 'Error processing GSM message');
         }
       }
 
@@ -44,8 +50,14 @@ export function createGsmServer(
             // Clear buffer after processing
             textBuffer = '';
           }
-        } catch (error) {
-          logger.error({ error, buffer: textBuffer, bufferLength: textBuffer.length }, 'Error processing GSM buffer');
+        } catch (error: any) {
+          logger.error({ 
+            error: error?.message || error,
+            stack: error?.stack,
+            buffer: textBuffer, 
+            bufferLength: textBuffer.length,
+            source: clientAddress
+          }, 'Error processing GSM buffer');
           textBuffer = '';
         }
       }

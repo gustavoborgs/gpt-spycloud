@@ -18,15 +18,37 @@ export class IngressAuditLogRepository extends BaseRepository {
     try {
       const prismaData = IngressAuditLogMapper.toPersistence(log);
 
+      logger.debug({ 
+        logId: log.id, 
+        sourceType: log.sourceType,
+        payloadLength: log.rawPayload.length 
+      }, 'Attempting to save audit log');
+
       const prismaLog = await this.prisma.ingressAuditLog.create({
         data: prismaData as any,
       });
 
-      logger.debug({ auditLogId: prismaLog.id }, 'Audit log saved successfully');
+      logger.info({ auditLogId: prismaLog.id, status: prismaLog.processingStatus }, 'Audit log saved successfully');
       return IngressAuditLogMapper.toDomain(prismaLog);
     } catch (error: any) {
-      // Log error but don't throw - audit log should not break the main flow
-      logger.error({ error: error.message, stack: error.stack, logId: log.id }, 'Failed to save audit log');
+      // Log error with full details - audit log should not break the main flow
+      logger.error({ 
+        error: error?.message || String(error),
+        errorName: error?.name,
+        errorCode: error?.code,
+        stack: error?.stack,
+        logId: log.id,
+        sourceType: log.sourceType,
+        payloadPreview: log.rawPayload.substring(0, 50)
+      }, 'Failed to save audit log');
+      
+      // Check if it's a table not found error
+      if (error?.code === 'P2001' || error?.message?.includes('does not exist') || error?.message?.includes('relation')) {
+        logger.error({ 
+          error: 'Table ingress_audit_logs does not exist. Run migration: npx prisma migrate dev'
+        }, 'CRITICAL: Database table missing');
+      }
+      
       return null;
     }
   }

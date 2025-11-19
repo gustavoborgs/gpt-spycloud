@@ -35,38 +35,78 @@ export class GsmSocketHandler {
   }
 
   async handleMessage(rawPayload: string): Promise<void> {
-    // Extract connection info from source identifier
-    const [remoteAddress, remotePortStr] = this.sourceIdentifier.split(':');
-    const remotePort = remotePortStr ? parseInt(remotePortStr, 10) : undefined;
-
-    // Create audit log FIRST - before any processing
-    const auditLog = IngressAuditLog.create({
-      rawPayload,
-      sourceType: SourceType.GSM_APN,
-      sourceIdentifier: this.sourceIdentifier,
-      remoteAddress,
-      remotePort,
-      metadata: {
-        receivedAt: new Date().toISOString(),
-        rawStringLength: rawPayload.length,
-      },
-    });
-
-    // Save audit log immediately - CRITICAL: must save before processing
+    let auditLog: IngressAuditLog | undefined;
     const auditRepo = this.getAuditLogRepository();
-    const savedLog = await auditRepo.save(auditLog);
-    if (!savedLog) {
-      logger.error({ logId: auditLog.id }, 'CRITICAL: Failed to save initial audit log - data may be lost');
-    } else {
-      logger.debug({ logId: auditLog.id }, 'Initial audit log saved successfully');
-    }
 
     try {
-      // Mark as processing
-      auditLog.markProcessing();
-      auditRepo.saveOrUpdate(auditLog).catch((err) => {
-        logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to PROCESSING');
+      // Validate source identifier
+      if (!this.sourceIdentifier) {
+        logger.error({ rawPayload }, 'Source identifier not set - cannot process message');
+        throw new Error('Source identifier not set');
+      }
+
+      // Extract connection info from source identifier
+      const [remoteAddress, remotePortStr] = this.sourceIdentifier.split(':');
+      const remotePort = remotePortStr ? parseInt(remotePortStr, 10) : undefined;
+
+      logger.debug({ 
+        rawPayload: rawPayload.substring(0, 50) + '...', 
+        sourceIdentifier: this.sourceIdentifier,
+        payloadLength: rawPayload.length 
+      }, 'Processing GSM message');
+
+      // Create audit log FIRST - before any processing
+      auditLog = IngressAuditLog.create({
+        rawPayload,
+        sourceType: SourceType.GSM_APN,
+        sourceIdentifier: this.sourceIdentifier,
+        remoteAddress,
+        remotePort,
+        metadata: {
+          receivedAt: new Date().toISOString(),
+          rawStringLength: rawPayload.length,
+        },
       });
+
+      // Save audit log immediately - CRITICAL: must save before processing
+      const savedLog = await auditRepo.save(auditLog);
+      if (!savedLog) {
+        logger.error({ logId: auditLog.id, rawPayload: rawPayload.substring(0, 50) }, 'CRITICAL: Failed to save initial audit log - data may be lost');
+        // Try to log the error details via direct Prisma
+        try {
+          const prisma = getDb();
+          await prisma.ingressAuditLog.create({
+            data: {
+              id: auditLog.id,
+              rawPayload,
+              sourceType: SourceType.GSM_APN,
+              sourceIdentifier: this.sourceIdentifier,
+              remoteAddress,
+              remotePort: remotePort || null,
+              processingStatus: 'RECEIVED',
+              receivedAt: new Date(),
+              createdAt: new Date(),
+            } as any,
+          });
+          logger.info({ logId: auditLog.id }, 'Audit log saved via direct Prisma call');
+        } catch (directError: any) {
+          logger.error({ 
+            error: directError?.message || directError,
+            stack: directError?.stack,
+            logId: auditLog.id 
+          }, 'CRITICAL: Even direct Prisma save failed');
+        }
+      } else {
+        logger.debug({ logId: auditLog.id }, 'Initial audit log saved successfully');
+      }
+
+      // Mark as processing (auditLog is guaranteed to be defined here)
+      if (auditLog) {
+        auditLog.markProcessing();
+        auditRepo.saveOrUpdate(auditLog).catch((err) => {
+          logger.error({ error: err, logId: auditLog!.id }, 'Failed to update audit log to PROCESSING');
+        });
+      }
 
       // The raw payload is a base64 string that will be converted in the decoder
       const result = await this.getHandleGsmMessageUseCase().execute({
@@ -76,26 +116,48 @@ export class GsmSocketHandler {
 
       if (result.isFailure()) {
         logger.error({ error: result.error, rawPayload }, 'Failed to process GSM message');
-        auditLog.markFailed(result.error || 'Unknown error');
-        await auditRepo.saveOrUpdate(auditLog).catch((err) => {
-          logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to FAILED');
-        });
+        if (auditLog) {
+          auditLog.markFailed(result.error || 'Unknown error');
+          await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+            logger.error({ error: err, logId: auditLog!.id }, 'Failed to update audit log to FAILED');
+          });
+        }
       } else {
         // Update audit log with success
-        auditLog.markSuccess();
-        await auditRepo.saveOrUpdate(auditLog).catch((err) => {
-          logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to SUCCESS');
-        });
+        if (auditLog) {
+          auditLog.markSuccess();
+          await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+            logger.error({ error: err, logId: auditLog!.id }, 'Failed to update audit log to SUCCESS');
+          });
+        }
         logger.debug({ messageId: result.value.id }, 'GSM message processed successfully');
       }
     } catch (error: any) {
       // Update audit log with error - CRITICAL: must save this
-      auditLog.markFailed(error);
-      await auditRepo.saveOrUpdate(auditLog).catch((err) => {
-        logger.error({ error: err, logId: auditLog.id }, 'CRITICAL: Failed to save failed audit log');
-      });
+      // Note: auditLog might not be defined if error happened before creation
+      if (auditLog) {
+        try {
+          auditLog.markFailed(error);
+          await auditRepo.saveOrUpdate(auditLog).catch((err) => {
+            logger.error({ error: err, logId: auditLog!.id }, 'CRITICAL: Failed to save failed audit log');
+          });
+        } catch (updateError: any) {
+          logger.error({ 
+            error: updateError?.message || updateError,
+            logId: auditLog!.id 
+          }, 'Failed to mark audit log as failed');
+        }
+      }
 
-      logger.error({ error, rawPayload, logId: auditLog.id }, 'Unexpected error processing GSM message');
+      logger.error({ 
+        error: error?.message || error,
+        stack: error?.stack,
+        rawPayload: rawPayload?.substring(0, 50),
+        logId: auditLog?.id
+      }, 'Unexpected error processing GSM message');
+      
+      // Re-throw to be caught by gsmServer
+      throw error;
     }
   }
 }

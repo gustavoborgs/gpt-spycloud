@@ -22,9 +22,24 @@ async function bootstrap() {
 
     // Create and start GSM TCP server
     const gsmServer = createGsmServer(async (rawPayload: string, sourceIdentifier: string) => {
-      logger.info(`${rawPayload}, ${sourceIdentifier} - received`);
-      gsmHandler.setSourceIdentifier(sourceIdentifier);
-      await gsmHandler.handleMessage(rawPayload);
+      try {
+        logger.debug({ rawPayload, sourceIdentifier, payloadLength: rawPayload.length }, 'GSM message received');
+        
+        // Set source identifier BEFORE processing
+        gsmHandler.setSourceIdentifier(sourceIdentifier);
+        
+        // Process message
+        await gsmHandler.handleMessage(rawPayload);
+      } catch (error: any) {
+        logger.error({ 
+          error: error?.message || error,
+          stack: error?.stack,
+          rawPayload,
+          sourceIdentifier
+        }, 'Fatal error in GSM message handler');
+        // Re-throw to be caught by gsmServer
+        throw error;
+      }
     });
 
     gsmServer.listen(env.GSM_PORT, env.GSM_HOST, () => {
