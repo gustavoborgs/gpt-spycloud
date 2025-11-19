@@ -1,6 +1,8 @@
-import { IngressAuditLog as PrismaIngressAuditLog, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { IngressAuditLog, IngressAuditLogProps, ProcessingStatus } from '../../domain/IngressAuditLog';
 import { SourceType } from '../../domain/SourceType';
+
+type PrismaIngressAuditLog = Prisma.IngressAuditLogGetPayload<{}>;
 
 export class IngressAuditLogMapper {
   static toDomain(prismaLog: PrismaIngressAuditLog): IngressAuditLog {
