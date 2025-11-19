@@ -1,0 +1,223 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Core Models
+// ============================================
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devices      Device[]
+  assets       Asset[]
+  alertRules   AlertRule[]
+  users        User[]
+
+  @@map("tenants")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  tenantId  String
+  role      String   @default("USER")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("users")
+}
+
+// ============================================
+// Devices Module
+// ============================================
+
+model Device {
+  id                String   @id @default(uuid())
+  serialNumber      String   @unique
+  modelId           String
+  tenantId          String
+  assetId           String?
+  status            String   // INACTIVE, ACTIVE, SUSPENDED, MAINTENANCE
+  type              String   // TRACKER, SENSOR, GATEWAY
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset             Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  telemetryPoints   TelemetryPoint[]
+  events            Event[]
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([serialNumber])
+  @@map("devices")
+}
+
+model DeviceModel {
+  id          String   @id @default(uuid())
+  modelId     String   @unique
+  name        String
+  connectivity String  // GSM, LORA, BOTH
+  capabilities Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("device_models")
+}
+
+// ============================================
+// Assets Module
+// ============================================
+
+model Asset {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  type        String   // VEHICLE, CONTAINER, PERSON, etc.
+  licensePlate String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  devices     Device[]
+
+  @@index([tenantId])
+  @@map("assets")
+}
+
+// ============================================
+// Ingest Module
+// ============================================
+
+model IngressMessageRaw {
+  id                String    @id @default(uuid())
+  rawPayload        String    @db.Text
+  sourceType        String    // GSM_APN, LORAWAN_EVERYNET, etc.
+  sourceIdentifier  String?
+  deviceSerialNumber String?
+  metadata          Json?
+  processedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([deviceSerialNumber])
+  @@index([sourceType])
+  @@index([processedAt])
+  @@map("ingress_messages_raw")
+}
+
+// ============================================
+// Telemetry Module
+// ============================================
+
+model TelemetryPoint {
+  id                String   @id @default(uuid())
+  deviceId          String
+  deviceSerialNumber String
+  timestamp         DateTime
+  latitude          Float
+  longitude         Float
+  speed             Float    @default(0)
+  heading           Float?
+  altitude          Float?
+  ignition          Boolean?
+  fuelLevel         Float?
+  additionalData    Json?
+  createdAt         DateTime @default(now())
+
+  device            Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, timestamp])
+  @@index([deviceSerialNumber, timestamp])
+  @@index([timestamp])
+  @@map("telemetry_points")
+}
+
+// ============================================
+// Events Module
+// ============================================
+
+model Event {
+  id                String   @id @default(uuid())
+  deviceId          String
+  deviceSerialNumber String
+  eventType         String   // IGNITION_ON, GEOFENCE_ENTER, etc.
+  timestamp         DateTime
+  latitude          Float?
+  longitude         Float?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  device            Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  alertNotifications AlertNotification[]
+
+  @@index([deviceId, timestamp])
+  @@index([deviceSerialNumber, timestamp])
+  @@index([eventType])
+  @@map("events")
+}
+
+// ============================================
+// Alerts Module
+// ============================================
+
+model AlertRule {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  name                String
+  eventType           String
+  enabled             Boolean  @default(true)
+  conditions          Json?
+  notificationChannels String[] // webhook, email, etc.
+  metadata            Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  notifications       AlertNotification[]
+
+  @@index([tenantId, eventType])
+  @@map("alert_rules")
+}
+
+model AlertNotification {
+  id                String   @id @default(uuid())
+  alertRuleId       String
+  deviceSerialNumber String
+  eventId           String
+  status            String   // PENDING, SENT, FAILED
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  alertRule         AlertRule @relation(fields: [alertRuleId], references: [id], onDelete: Cascade)
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([alertRuleId])
+  @@index([status])
+  @@map("alert_notifications")
+}
