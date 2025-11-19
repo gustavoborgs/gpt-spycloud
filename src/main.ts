@@ -21,8 +21,10 @@ async function bootstrap() {
     });
 
     // Create and start GSM TCP server
-    const gsmServer = createGsmServer(async (message) => {
-      await gsmHandler.handleMessage(message);
+    const gsmServer = createGsmServer(async (rawPayload: string, sourceIdentifier: string) => {
+      logger.info(`${rawPayload}, ${sourceIdentifier} - received`);
+      gsmHandler.setSourceIdentifier(sourceIdentifier);
+      await gsmHandler.handleMessage(rawPayload);
     });
 
     gsmServer.listen(env.GSM_PORT, env.GSM_HOST, () => {

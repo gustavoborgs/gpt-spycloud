@@ -1,4 +1,3 @@
-import { GsmMessage } from '../../../../infra/tcp/gsmServer';
 import { HandleGsmRawMessageUseCase } from '../../application/use-cases/HandleGsmRawMessage.usecase';
 import { IngressMessageRawRepository } from '../../infra/repositories/IngressMessageRawRepository';
 import { IngressAuditLogRepository } from '../../infra/repositories/IngressAuditLogRepository';
@@ -10,6 +9,7 @@ import { SourceType } from '../../domain/SourceType';
 export class GsmSocketHandler {
   private handleGsmMessageUseCase: HandleGsmRawMessageUseCase | null = null;
   private auditLogRepository: IngressAuditLogRepository | null = null;
+  private sourceIdentifier: string = '';
 
   private getHandleGsmMessageUseCase(): HandleGsmRawMessageUseCase {
     if (!this.handleGsmMessageUseCase) {
@@ -26,22 +26,29 @@ export class GsmSocketHandler {
     return this.auditLogRepository;
   }
 
-  async handleMessage(message: GsmMessage): Promise<void> {
-    // Extract connection info
-    const [remoteAddress, remotePortStr] = message.source.split(':');
+  /**
+   * Set the source identifier (IP:Port) for this handler instance
+   * This should be called when a connection is established
+   */
+  setSourceIdentifier(source: string): void {
+    this.sourceIdentifier = source;
+  }
+
+  async handleMessage(rawPayload: string): Promise<void> {
+    // Extract connection info from source identifier
+    const [remoteAddress, remotePortStr] = this.sourceIdentifier.split(':');
     const remotePort = remotePortStr ? parseInt(remotePortStr, 10) : undefined;
 
     // Create audit log FIRST - before any processing
     const auditLog = IngressAuditLog.create({
-      rawPayload: message.raw,
+      rawPayload,
       sourceType: SourceType.GSM_APN,
-      sourceIdentifier: message.source,
+      sourceIdentifier: this.sourceIdentifier,
       remoteAddress,
       remotePort,
       metadata: {
-        rawBuffer: message.rawBuffer ? message.rawBuffer.toString('hex') : undefined,
-        bufferLength: message.rawBuffer?.length,
-        receivedAt: message.receivedAt.toISOString(),
+        receivedAt: new Date().toISOString(),
+        rawStringLength: rawPayload.length,
       },
     });
 
@@ -61,15 +68,14 @@ export class GsmSocketHandler {
         logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to PROCESSING');
       });
 
-      // The raw payload can be hex or base64
-      // The decoder will detect the format automatically
+      // The raw payload is a base64 string that will be converted in the decoder
       const result = await this.getHandleGsmMessageUseCase().execute({
-        rawPayload: message.raw, // hex string or base64
-        sourceIdentifier: message.source,
+        rawPayload, // base64 string
+        sourceIdentifier: this.sourceIdentifier,
       });
 
       if (result.isFailure()) {
-        logger.error({ error: result.error, message: message.raw }, 'Failed to process GSM message');
+        logger.error({ error: result.error, rawPayload }, 'Failed to process GSM message');
         auditLog.markFailed(result.error || 'Unknown error');
         await auditRepo.saveOrUpdate(auditLog).catch((err) => {
           logger.error({ error: err, logId: auditLog.id }, 'Failed to update audit log to FAILED');
@@ -89,7 +95,7 @@ export class GsmSocketHandler {
         logger.error({ error: err, logId: auditLog.id }, 'CRITICAL: Failed to save failed audit log');
       });
 
-      logger.error({ error, message: message.raw, logId: auditLog.id }, 'Unexpected error processing GSM message');
+      logger.error({ error, rawPayload, logId: auditLog.id }, 'Unexpected error processing GSM message');
     }
   }
 }
