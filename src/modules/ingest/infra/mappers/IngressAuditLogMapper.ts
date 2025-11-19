@@ -2,7 +2,27 @@ import { Prisma } from '@prisma/client';
 import { IngressAuditLog, IngressAuditLogProps, ProcessingStatus } from '../../domain/IngressAuditLog';
 import { SourceType } from '../../domain/SourceType';
 
-type PrismaIngressAuditLog = Prisma.IngressAuditLogGetPayload<{}>;
+// Use Prisma's generated type - IngressAuditLog model from schema
+type PrismaIngressAuditLog = {
+  id: string;
+  rawPayload: string;
+  sourceType: string;
+  sourceIdentifier: string | null;
+  deviceSerialNumber: string | null;
+  remoteAddress: string | null;
+  remotePort: number | null;
+  userAgent: string | null;
+  httpMethod: string | null;
+  httpPath: string | null;
+  httpHeaders: Prisma.JsonValue | null;
+  processingStatus: string;
+  errorMessage: string | null;
+  errorStack: string | null;
+  metadata: Prisma.JsonValue | null;
+  receivedAt: Date;
+  processedAt: Date | null;
+  createdAt: Date;
+};
 
 export class IngressAuditLogMapper {
   static toDomain(prismaLog: PrismaIngressAuditLog): IngressAuditLog {
@@ -48,11 +68,11 @@ export class IngressAuditLogMapper {
       userAgent: log.userAgent || null,
       httpMethod: log.httpMethod || null,
       httpPath: log.httpPath || null,
-      httpHeaders: log.httpHeaders ? (log.httpHeaders as Prisma.InputJsonValue) : null,
+      httpHeaders: log.httpHeaders ? (log.httpHeaders as Prisma.JsonValue) : null,
       processingStatus: log.processingStatus,
       errorMessage: log.errorMessage || null,
       errorStack: log.errorStack || null,
-      metadata: log.metadata ? (log.metadata as Prisma.InputJsonValue) : null,
+      metadata: log.metadata ? (log.metadata as Prisma.JsonValue) : null,
       receivedAt: log.receivedAt,
       processedAt: log.processedAt || null,
       createdAt: log.createdAt,

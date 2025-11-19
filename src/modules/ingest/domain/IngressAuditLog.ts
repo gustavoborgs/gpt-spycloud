@@ -36,9 +36,35 @@ export interface IngressAuditLogProps {
 }
 
 export class IngressAuditLog extends Entity<IngressAuditLogProps> {
+  // Private fields for properties with getters
+  private _processingStatus: ProcessingStatus;
+  private _receivedAt: Date;
+  private _processedAt?: Date;
+  private _errorMessage?: string;
+  private _errorStack?: string;
+
   private constructor(props: IngressAuditLogProps, id?: string, createdAt?: Date, updatedAt?: Date) {
     super(id || crypto.randomUUID(), createdAt, updatedAt);
-    Object.assign(this, props);
+    
+    // Assign simple properties directly
+    (this as any).rawPayload = props.rawPayload;
+    (this as any).sourceType = props.sourceType;
+    (this as any).sourceIdentifier = props.sourceIdentifier;
+    (this as any).deviceSerialNumber = props.deviceSerialNumber;
+    (this as any).remoteAddress = props.remoteAddress;
+    (this as any).remotePort = props.remotePort;
+    (this as any).userAgent = props.userAgent;
+    (this as any).httpMethod = props.httpMethod;
+    (this as any).httpPath = props.httpPath;
+    (this as any).httpHeaders = props.httpHeaders;
+    (this as any).metadata = props.metadata;
+    
+    // Assign properties with getters using private fields
+    this._processingStatus = props.processingStatus || ProcessingStatus.RECEIVED;
+    this._receivedAt = props.receivedAt || new Date();
+    this._processedAt = props.processedAt;
+    this._errorMessage = props.errorMessage;
+    this._errorStack = props.errorStack;
   }
 
   static create(props: IngressAuditLogProps, id?: string, createdAt?: Date, updatedAt?: Date): IngressAuditLog {
@@ -95,15 +121,15 @@ export class IngressAuditLog extends Entity<IngressAuditLogProps> {
   }
 
   get processingStatus(): ProcessingStatus {
-    return (this as any).processingStatus || ProcessingStatus.RECEIVED;
+    return this._processingStatus;
   }
 
   get errorMessage(): string | undefined {
-    return (this as any).errorMessage;
+    return this._errorMessage;
   }
 
   get errorStack(): string | undefined {
-    return (this as any).errorStack;
+    return this._errorStack;
   }
 
   get metadata(): Record<string, any> | undefined {
@@ -111,33 +137,33 @@ export class IngressAuditLog extends Entity<IngressAuditLogProps> {
   }
 
   get receivedAt(): Date {
-    return (this as any).receivedAt || this.createdAt;
+    return this._receivedAt;
   }
 
   get processedAt(): Date | undefined {
-    return (this as any).processedAt;
+    return this._processedAt;
   }
 
   markProcessing(): void {
-    (this as any).processingStatus = ProcessingStatus.PROCESSING;
+    this._processingStatus = ProcessingStatus.PROCESSING;
     this.touch();
   }
 
   markSuccess(): void {
-    (this as any).processingStatus = ProcessingStatus.SUCCESS;
-    (this as any).processedAt = new Date();
+    this._processingStatus = ProcessingStatus.SUCCESS;
+    this._processedAt = new Date();
     this.touch();
   }
 
   markFailed(error: Error | string): void {
-    (this as any).processingStatus = ProcessingStatus.FAILED;
-    (this as any).processedAt = new Date();
+    this._processingStatus = ProcessingStatus.FAILED;
+    this._processedAt = new Date();
     
     if (error instanceof Error) {
-      (this as any).errorMessage = error.message;
-      (this as any).errorStack = error.stack;
+      this._errorMessage = error.message;
+      this._errorStack = error.stack;
     } else {
-      (this as any).errorMessage = error;
+      this._errorMessage = error;
     }
     
     this.touch();
